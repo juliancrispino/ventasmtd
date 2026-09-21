@@ -1,10 +1,19 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { AtSign, MapPin, MessageCircle, Phone, Search, Trash2 } from "lucide-react"
+import { AtSign, Search, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { ContactDialog } from "@/components/contact-dialog"
 import { StatusBadge } from "@/components/status-badge"
 import { deleteBusiness, updateBusiness } from "@/lib/store"
@@ -24,12 +33,20 @@ const FILTERS: { id: ProspectStatus | "all"; label: string }[] = [
   { id: "no", label: "Negativos" },
 ]
 
-const CARD_STYLES: Record<ProspectStatus, string> = {
-  pending: "border-l-zinc-400 bg-white",
-  recent: "border-l-sky-500 bg-sky-50",
-  followup: "border-l-amber-500 bg-amber-50",
-  ok: "border-l-emerald-500 bg-emerald-50",
-  no: "border-l-rose-500 bg-rose-50",
+const ROW_BG: Record<ProspectStatus, string> = {
+  pending: "bg-white",
+  recent: "bg-sky-50",
+  followup: "bg-amber-50",
+  ok: "bg-emerald-50",
+  no: "bg-rose-50",
+}
+
+const ROW_BORDER: Record<ProspectStatus, string> = {
+  pending: "border-l-zinc-400",
+  recent: "border-l-sky-500",
+  followup: "border-l-amber-500",
+  ok: "border-l-emerald-500",
+  no: "border-l-rose-500",
 }
 
 export function BusinessTable({
@@ -83,11 +100,11 @@ export function BusinessTable({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-col gap-2">
-        <div className="relative w-full">
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+        <div className="relative w-full lg:max-w-sm">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            className="h-11 bg-white pl-9 text-base md:text-sm"
+            className="h-11 bg-white pl-9 text-base lg:h-8 lg:text-sm"
             placeholder="Buscar nombre, teléfono, rubro…"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -95,7 +112,7 @@ export function BusinessTable({
         </div>
         {categories.length > 0 && (
           <select
-            className="h-11 w-full rounded-lg border border-input bg-white px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm"
+            className="h-11 w-full rounded-lg border border-input bg-white px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 lg:h-8 lg:w-auto lg:text-sm"
             value={category}
             onChange={(event) => setCategory(event.target.value)}
           >
@@ -109,12 +126,12 @@ export function BusinessTable({
         )}
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5">
         {FILTERS.map((item) => (
           <Button
             key={item.id}
             size="sm"
-            className="h-9 min-w-0 px-3"
+            className="h-8 min-w-0 px-2.5"
             variant={filter === item.id ? "default" : "outline"}
             onClick={() => setFilter(item.id)}
           >
@@ -131,112 +148,197 @@ export function BusinessTable({
           </p>
         </div>
       ) : (
-        <div className="grid gap-3 lg:grid-cols-2">
-          {rows.map((business) => {
-            const status = getProspectStatus(business, settings.followUpDays)
-            const ig = instagramUrl(business.social)
-            return (
-              <article
-                key={business.id}
-                className={cn(
-                  "rounded-xl border border-l-4 p-3 shadow-sm",
-                  CARD_STYLES[status]
-                )}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <h3 className="text-base leading-snug font-semibold">
-                      {business.name}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {business.category || "Sin rubro"}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <StatusBadge status={status} />
-                    <Button
-                      size="icon-sm"
-                      variant="ghost"
-                      aria-label={`Eliminar ${business.name}`}
-                      onClick={() => {
-                        deleteBusiness(list.id, business.id)
-                        toast.success(`${business.name} eliminado`)
-                      }}
-                    >
-                      <Trash2 />
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="mt-2 space-y-1 text-sm">
-                  {business.address ? (
-                    <p className="flex items-start gap-1.5 text-muted-foreground">
-                      <MapPin className="mt-0.5 size-3.5 shrink-0" />
-                      <span>{business.address}</span>
-                    </p>
-                  ) : null}
-                  {hasPhone(business.phone) ? (
-                    <p className="flex items-center gap-1.5">
-                      <Phone className="size-3.5 shrink-0 text-muted-foreground" />
-                      {formatPhone(business.phone)}
-                    </p>
-                  ) : null}
-                  {business.social ? (
-                    ig ? (
-                      <a
-                        href={ig}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-teal-800"
-                      >
-                        <AtSign className="size-3.5" />
-                        {business.social.replace(/^https?:\/\//, "")}
-                      </a>
-                    ) : (
-                      <p>{business.social}</p>
-                    )
-                  ) : null}
-                </div>
-
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {formatRelative(business.lastMessageAt)}
-                  {status === "followup"
-                    ? ` · pasaron más de ${settings.followUpDays} días`
-                    : ""}
-                </p>
-
-                <div className="mt-3 grid grid-cols-3 gap-1.5">
-                  <FlagToggle
-                    label="Contactado"
-                    checked={business.contacted}
-                    onToggle={(checked) => toggle(business, "contacted", checked)}
-                  />
-                  <FlagToggle
-                    label="OK"
-                    checked={business.respondedOk}
-                    onToggle={(checked) => toggle(business, "respondedOk", checked)}
-                    tone="ok"
-                  />
-                  <FlagToggle
-                    label="Negativa"
-                    checked={business.respondedNo}
-                    onToggle={(checked) => toggle(business, "respondedNo", checked)}
-                    tone="no"
-                  />
-                </div>
-
-                <Button
-                  className="mt-3 h-11 w-full text-base"
-                  disabled={!hasPhone(business.phone)}
-                  onClick={() => setContact(business)}
+        <>
+          <div className="space-y-1.5 lg:hidden">
+            {rows.map((business) => {
+              const status = getProspectStatus(business, settings.followUpDays)
+              return (
+                <article
+                  key={business.id}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-lg border border-l-4 py-1.5 pr-1 pl-2",
+                    ROW_BG[status],
+                    ROW_BORDER[status]
+                  )}
                 >
-                  <MessageCircle />
-                  Contactar por WhatsApp
-                </Button>
-              </article>
-            )
-          })}
-        </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold leading-tight">
+                      {business.name}
+                    </p>
+                    <p className="truncate text-[11px] text-muted-foreground leading-tight">
+                      {business.category || "Sin rubro"}
+                      {status === "followup" ? " · recontactar" : ""}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center">
+                    <EmojiToggle
+                      emoji="📤"
+                      label={`Contactado ${business.name}`}
+                      pressed={business.contacted}
+                      onPressedChange={(pressed) =>
+                        toggle(business, "contacted", pressed)
+                      }
+                    />
+                    <EmojiToggle
+                      emoji="👍"
+                      label={`Respondió OK ${business.name}`}
+                      pressed={business.respondedOk}
+                      tone="ok"
+                      onPressedChange={(pressed) =>
+                        toggle(business, "respondedOk", pressed)
+                      }
+                    />
+                    <EmojiToggle
+                      emoji="👎"
+                      label={`Respuesta negativa ${business.name}`}
+                      pressed={business.respondedNo}
+                      tone="no"
+                      onPressedChange={(pressed) =>
+                        toggle(business, "respondedNo", pressed)
+                      }
+                    />
+                    <EmojiToggle
+                      emoji="💬"
+                      label={`WhatsApp ${business.name}`}
+                      disabled={!hasPhone(business.phone)}
+                      onPressedChange={() => setContact(business)}
+                    />
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+
+          <div className="hidden overflow-hidden rounded-xl border bg-white shadow-sm lg:block">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/60 hover:bg-muted/60">
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Rubro</TableHead>
+                  <TableHead>Ubicación</TableHead>
+                  <TableHead>WhatsApp</TableHead>
+                  <TableHead>Redes</TableHead>
+                  <TableHead className="text-center">Contactado</TableHead>
+                  <TableHead className="text-center">OK</TableHead>
+                  <TableHead className="text-center">Negativa</TableHead>
+                  <TableHead>Último mensaje</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((business) => {
+                  const status = getProspectStatus(business, settings.followUpDays)
+                  const ig = instagramUrl(business.social)
+                  return (
+                    <TableRow
+                      key={business.id}
+                      className={cn("border-l-4", ROW_BG[status], ROW_BORDER[status])}
+                    >
+                      <TableCell className="font-medium">{business.name}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {business.category || "—"}
+                      </TableCell>
+                      <TableCell className="max-w-52 truncate text-muted-foreground">
+                        {business.address || "—"}
+                      </TableCell>
+                      <TableCell>
+                        {hasPhone(business.phone) ? formatPhone(business.phone) : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {business.social ? (
+                          ig ? (
+                            <a
+                              href={ig}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-teal-800 hover:underline"
+                            >
+                              <AtSign className="size-3.5" />
+                              {business.social.replace(/^https?:\/\//, "")}
+                            </a>
+                          ) : (
+                            business.social
+                          )
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex justify-center">
+                          <Checkbox
+                            checked={business.contacted}
+                            onCheckedChange={(checked) =>
+                              toggle(business, "contacted", Boolean(checked))
+                            }
+                            aria-label={`Contactado ${business.name}`}
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex justify-center">
+                          <Checkbox
+                            checked={business.respondedOk}
+                            onCheckedChange={(checked) =>
+                              toggle(business, "respondedOk", Boolean(checked))
+                            }
+                            aria-label={`Respondió OK ${business.name}`}
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex justify-center">
+                          <Checkbox
+                            checked={business.respondedNo}
+                            onCheckedChange={(checked) =>
+                              toggle(business, "respondedNo", Boolean(checked))
+                            }
+                            aria-label={`Respuesta negativa ${business.name}`}
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="leading-tight">
+                          <p className="text-sm">{formatRelative(business.lastMessageAt)}</p>
+                          {status === "followup" && (
+                            <p className="text-xs font-medium text-amber-800">
+                              Más de {settings.followUpDays} días
+                            </p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge status={status} />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            size="sm"
+                            disabled={!hasPhone(business.phone)}
+                            onClick={() => setContact(business)}
+                          >
+                            💬 Contactar
+                          </Button>
+                          <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            aria-label={`Eliminar ${business.name}`}
+                            onClick={() => {
+                              deleteBusiness(list.id, business.id)
+                              toast.success(`${business.name} eliminado`)
+                            }}
+                          >
+                            <Trash2 />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
 
       <p className="px-1 text-xs text-muted-foreground">
@@ -258,30 +360,38 @@ export function BusinessTable({
   )
 }
 
-function FlagToggle({
+function EmojiToggle({
+  emoji,
   label,
-  checked,
-  onToggle,
+  pressed,
+  disabled,
   tone,
+  onPressedChange,
 }: {
+  emoji: string
   label: string
-  checked: boolean
-  onToggle: (checked: boolean) => void
+  pressed?: boolean
+  disabled?: boolean
   tone?: "ok" | "no"
+  onPressedChange: (pressed: boolean) => void
 }) {
   return (
     <button
       type="button"
-      onClick={() => onToggle(!checked)}
+      aria-label={label}
+      aria-pressed={pressed}
+      disabled={disabled}
+      onClick={() => onPressedChange(!pressed)}
       className={cn(
-        "flex min-h-12 flex-col items-center justify-center rounded-lg border px-1 text-center text-[11px] font-medium leading-tight",
-        checked && tone === "ok" && "border-emerald-600 bg-emerald-100 text-emerald-900",
-        checked && tone === "no" && "border-rose-600 bg-rose-100 text-rose-900",
-        checked && !tone && "border-teal-700 bg-teal-100 text-teal-950",
-        !checked && "border-border bg-white text-muted-foreground"
+        "flex size-9 items-center justify-center rounded-md text-[17px] leading-none",
+        pressed && tone === "ok" && "bg-emerald-200",
+        pressed && tone === "no" && "bg-rose-200",
+        pressed && !tone && "bg-teal-200",
+        !pressed && "bg-transparent",
+        disabled && "opacity-35"
       )}
     >
-      {label}
+      {emoji}
     </button>
   )
 }
