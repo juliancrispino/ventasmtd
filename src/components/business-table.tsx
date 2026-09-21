@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { AtSign, Search, Trash2 } from "lucide-react"
+import { Search, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -15,12 +15,12 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { ContactDialog } from "@/components/contact-dialog"
+import { AddBusinessDialog } from "@/components/add-business-dialog"
 import { StatusBadge } from "@/components/status-badge"
 import { deleteBusiness, updateBusiness } from "@/lib/store"
-import { formatPhone, hasPhone } from "@/lib/phone"
+import { hasPhone } from "@/lib/phone"
 import { formatRelative } from "@/lib/dates"
 import { getProspectStatus } from "@/lib/status"
-import { instagramUrl } from "@/lib/whatsapp"
 import { cn } from "@/lib/utils"
 import type { Business, CityList, ProspectStatus, Settings } from "@/lib/types"
 
@@ -60,6 +60,7 @@ export function BusinessTable({
   const [filter, setFilter] = useState<ProspectStatus | "all">("all")
   const [category, setCategory] = useState("all")
   const [contact, setContact] = useState<Business | null>(null)
+  const [editing, setEditing] = useState<Business | null>(null)
 
   const categories = useMemo(() => {
     return [...new Set(list.businesses.map((item) => item.category).filter(Boolean))].sort(
@@ -161,7 +162,18 @@ export function BusinessTable({
                     ROW_BORDER[status]
                   )}
                 >
-                  <div className="min-w-0 flex-1">
+                  <div
+                    className="min-w-0 flex-1"
+                    onClick={() => setEditing(business)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault()
+                        setEditing(business)
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                  >
                     <p className="truncate text-sm font-semibold leading-tight">
                       {business.name}
                     </p>
@@ -171,6 +183,11 @@ export function BusinessTable({
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center">
+                    <EmojiToggle
+                      emoji="✏️"
+                      label={`Editar ${business.name}`}
+                      onPressedChange={() => setEditing(business)}
+                    />
                     <EmojiToggle
                       emoji="📤"
                       label={`Contactado ${business.name}`}
@@ -229,40 +246,63 @@ export function BusinessTable({
               <TableBody>
                 {rows.map((business) => {
                   const status = getProspectStatus(business, settings.followUpDays)
-                  const ig = instagramUrl(business.social)
                   return (
                     <TableRow
                       key={business.id}
                       className={cn("border-l-4", ROW_BG[status], ROW_BORDER[status])}
                     >
-                      <TableCell className="font-medium">{business.name}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {business.category || "—"}
+                      <TableCell className="min-w-44">
+                        <TableField
+                          value={business.name}
+                          ariaLabel={`Nombre de ${business.name}`}
+                          onSave={(name) => {
+                            if (!name) {
+                              toast.error("El nombre no puede quedar vacío.")
+                              return
+                            }
+                            updateBusiness(list.id, business.id, { name })
+                          }}
+                        />
                       </TableCell>
-                      <TableCell className="max-w-52 truncate text-muted-foreground">
-                        {business.address || "—"}
+                      <TableCell className="min-w-36">
+                        <TableField
+                          value={business.category}
+                          ariaLabel={`Rubro de ${business.name}`}
+                          placeholder="Rubro"
+                          onSave={(category) =>
+                            updateBusiness(list.id, business.id, { category })
+                          }
+                        />
                       </TableCell>
-                      <TableCell>
-                        {hasPhone(business.phone) ? formatPhone(business.phone) : "—"}
+                      <TableCell className="min-w-48">
+                        <TableField
+                          value={business.address}
+                          ariaLabel={`Ubicación de ${business.name}`}
+                          placeholder="Ubicación"
+                          onSave={(address) =>
+                            updateBusiness(list.id, business.id, { address })
+                          }
+                        />
                       </TableCell>
-                      <TableCell>
-                        {business.social ? (
-                          ig ? (
-                            <a
-                              href={ig}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-teal-800 hover:underline"
-                            >
-                              <AtSign className="size-3.5" />
-                              {business.social.replace(/^https?:\/\//, "")}
-                            </a>
-                          ) : (
-                            business.social
-                          )
-                        ) : (
-                          "—"
-                        )}
+                      <TableCell className="min-w-40">
+                        <TableField
+                          value={business.phone}
+                          ariaLabel={`Teléfono de ${business.name}`}
+                          placeholder="WhatsApp"
+                          onSave={(phone) =>
+                            updateBusiness(list.id, business.id, { phone })
+                          }
+                        />
+                      </TableCell>
+                      <TableCell className="min-w-36">
+                        <TableField
+                          value={business.social}
+                          ariaLabel={`Redes de ${business.name}`}
+                          placeholder="@instagram"
+                          onSave={(social) =>
+                            updateBusiness(list.id, business.id, { social })
+                          }
+                        />
                       </TableCell>
                       <TableCell className="text-center">
                         <div className="flex justify-center">
@@ -342,7 +382,9 @@ export function BusinessTable({
       )}
 
       <p className="px-1 text-xs text-muted-foreground">
-        Mostrando {rows.length} de {list.businesses.length} negocios
+        Mostrando {rows.length} de {list.businesses.length} negocios.
+        En la computadora, hacé clic en un dato para corregirlo. En el celular,
+        tocá el nombre o ✏️.
       </p>
 
       <ContactDialog
@@ -356,7 +398,59 @@ export function BusinessTable({
         business={contact}
         settings={settings}
       />
+      <AddBusinessDialog
+        key={editing?.id ?? "edit-closed"}
+        open={Boolean(editing)}
+        onOpenChange={(open) => {
+          if (!open) setEditing(null)
+        }}
+        listId={list.id}
+        business={editing}
+      />
     </div>
+  )
+}
+
+function TableField({
+  value,
+  onSave,
+  placeholder,
+  ariaLabel,
+}: {
+  value: string
+  onSave: (value: string) => void
+  placeholder?: string
+  ariaLabel: string
+}) {
+  const [focused, setFocused] = useState(false)
+  const [draft, setDraft] = useState(value)
+
+  return (
+    <Input
+      aria-label={ariaLabel}
+      className="h-8 min-w-32 border-transparent bg-transparent px-1.5 shadow-none hover:border-input focus-visible:border-ring"
+      value={focused ? draft : value}
+      placeholder={placeholder || "—"}
+      onFocus={() => {
+        setDraft(value)
+        setFocused(true)
+      }}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={() => {
+        setFocused(false)
+        const next = draft.trim()
+        if (next !== value.trim()) onSave(next)
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          event.currentTarget.blur()
+        }
+        if (event.key === "Escape") {
+          setDraft(value)
+          event.currentTarget.blur()
+        }
+      }}
+    />
   )
 }
 

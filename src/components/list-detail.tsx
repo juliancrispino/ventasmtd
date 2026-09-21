@@ -173,6 +173,7 @@ export function ListDetail({ listId }: { listId: string }) {
         appendToListId={list.id}
       />
       <AddBusinessDialog
+        key={addOpen ? "add-open" : "add-closed"}
         open={addOpen}
         onOpenChange={setAddOpen}
         listId={list.id}

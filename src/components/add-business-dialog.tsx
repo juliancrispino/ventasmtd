@@ -13,29 +13,33 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { addBusiness } from "@/lib/store"
+import { addBusiness, updateBusiness } from "@/lib/store"
+import type { Business } from "@/lib/types"
 
 export function AddBusinessDialog({
   open,
   onOpenChange,
   listId,
+  business,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   listId: string
+  business?: Business | null
 }) {
-  const [name, setName] = useState("")
-  const [category, setCategory] = useState("")
-  const [address, setAddress] = useState("")
-  const [phone, setPhone] = useState("")
-  const [social, setSocial] = useState("")
+  const isEdit = Boolean(business)
+  const [name, setName] = useState(business?.name ?? "")
+  const [category, setCategory] = useState(business?.category ?? "")
+  const [address, setAddress] = useState(business?.address ?? "")
+  const [phone, setPhone] = useState(business?.phone ?? "")
+  const [social, setSocial] = useState(business?.social ?? "")
 
   function reset() {
-    setName("")
-    setCategory("")
-    setAddress("")
-    setPhone("")
-    setSocial("")
+    setName(business?.name ?? "")
+    setCategory(business?.category ?? "")
+    setAddress(business?.address ?? "")
+    setPhone(business?.phone ?? "")
+    setSocial(business?.social ?? "")
   }
 
   function save() {
@@ -43,20 +47,30 @@ export function AddBusinessDialog({
       toast.error("El nombre del negocio es obligatorio.")
       return
     }
-    addBusiness(listId, {
-      city: "",
-      name: name.trim(),
-      category: category.trim(),
-      address: address.trim(),
-      phone: phone.trim(),
-      social: social.trim(),
-      contacted: false,
-      respondedOk: false,
-      respondedNo: false,
-      lastMessageAt: null,
-    })
-    toast.success(`${name.trim()} agregado a la lista`)
-    reset()
+    if (business) {
+      updateBusiness(listId, business.id, {
+        name: name.trim(),
+        category: category.trim(),
+        address: address.trim(),
+        phone: phone.trim(),
+        social: social.trim(),
+      })
+      toast.success("Datos actualizados")
+    } else {
+      addBusiness(listId, {
+        city: "",
+        name: name.trim(),
+        category: category.trim(),
+        address: address.trim(),
+        phone: phone.trim(),
+        social: social.trim(),
+        contacted: false,
+        respondedOk: false,
+        respondedNo: false,
+        lastMessageAt: null,
+      })
+      toast.success(`${name.trim()} agregado a la lista`)
+    }
     onOpenChange(false)
   }
 
@@ -64,29 +78,46 @@ export function AddBusinessDialog({
     <Dialog
       open={open}
       onOpenChange={(next) => {
+        if (next) reset()
         onOpenChange(next)
-        if (!next) reset()
       }}
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Agregar negocio</DialogTitle>
+          <DialogTitle>{isEdit ? "Editar negocio" : "Agregar negocio"}</DialogTitle>
           <DialogDescription>
-            Cargá un contacto suelto si no está en el Excel o CSV.
+            {isEdit
+              ? "Corregí los datos que se importaron mal."
+              : "Cargá un contacto suelto si no está en el CSV."}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3">
           <Field label="Nombre" value={name} onChange={setName} required />
-          <Field label="Rubro" value={category} onChange={setCategory} placeholder="Peluquería, estética, canina…" />
+          <Field
+            label="Rubro"
+            value={category}
+            onChange={setCategory}
+            placeholder="Peluquería, estética, canina…"
+          />
           <Field label="Ubicación" value={address} onChange={setAddress} />
-          <Field label="WhatsApp" value={phone} onChange={setPhone} placeholder="+54 223 123-4567" />
-          <Field label="Instagram u otra red" value={social} onChange={setSocial} placeholder="@negocio" />
+          <Field
+            label="WhatsApp"
+            value={phone}
+            onChange={setPhone}
+            placeholder="+54 223 123-4567"
+          />
+          <Field
+            label="Instagram u otra red"
+            value={social}
+            onChange={setSocial}
+            placeholder="@negocio"
+          />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={save}>Agregar</Button>
+          <Button onClick={save}>{isEdit ? "Guardar" : "Agregar"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -115,6 +146,7 @@ function Field({
       </Label>
       <Input
         id={id}
+        className="h-11 text-base lg:h-8 lg:text-sm"
         value={value}
         placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
