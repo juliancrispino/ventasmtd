@@ -1,0 +1,308 @@
+"use client"
+
+import { useSyncExternalStore } from "react"
+import { createSampleList } from "@/lib/seed"
+import {
+  DEFAULT_SETTINGS,
+  type AppState,
+  type Business,
+  type CityList,
+  type ParsedRow,
+  type Settings,
+} from "@/lib/types"
+import { normalizePhone } from "@/lib/phone"
+
+const DB_NAME = "mtd-crm"
+const STORE_NAME = "kv"
+const STATE_KEY = "state"
+const STORAGE_KEY = "mtd-crm-v1"
+
+const EMPTY_STATE: AppState = {
+  version: 1,
+  lists: [],
+  settings: DEFAULT_SETTINGS,
+  hydrated: false,
+}
+
+let memoryState: AppState = EMPTY_STATE
+const listeners = new Set<() => void>()
+let hydrateStarted = false
+
+function emit() {
+  for (const listener of listeners) listener()
+}
+
+function setState(next: AppState) {
+  memoryState = next
+  emit()
+  if (next.hydrated) {
+    void persist(next)
+  }
+}
+
+function snapshot(): Omit<AppState, "hydrated"> {
+  return {
+    version: 1,
+    lists: memoryState.lists,
+    settings: memoryState.settings,
+  }
+}
+
+function openDb(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, 1)
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(STORE_NAME)) {
+        request.result.createObjectStore(STORE_NAME)
+      }
+    }
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(request.error)
+  })
+}
+
+async function persist(state: AppState) {
+  const payload = JSON.stringify({
+    version: 1,
+    lists: state.lists,
+    settings: state.settings,
+  })
+  try {
+    localStorage.setItem(STORAGE_KEY, payload)
+  } catch {
+    // quota
+  }
+  try {
+    const db = await openDb()
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readwrite")
+      tx.objectStore(STORE_NAME).put(payload, STATE_KEY)
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+    db.close()
+  } catch {
+    // private mode
+  }
+}
+
+function parsePersisted(raw: string | null): Omit<AppState, "hydrated"> | null {
+  if (!raw) return null
+  try {
+    const data = JSON.parse(raw) as Partial<AppState>
+    if (!data || data.version !== 1 || !Array.isArray(data.lists)) return null
+    return {
+      version: 1,
+      lists: data.lists,
+      settings: { ...DEFAULT_SETTINGS, ...data.settings },
+    }
+  } catch {
+    return null
+  }
+}
+
+async function readPersisted(): Promise<Omit<AppState, "hydrated"> | null> {
+  try {
+    const db = await openDb()
+    const fromDb = await new Promise<string | null>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readonly")
+      const request = tx.objectStore(STORE_NAME).get(STATE_KEY)
+      request.onsuccess = () => resolve((request.result as string | undefined) ?? null)
+      request.onerror = () => reject(request.error)
+    })
+    db.close()
+    const parsed = parsePersisted(fromDb)
+    if (parsed) return parsed
+  } catch {
+    // ignore
+  }
+  if (typeof localStorage !== "undefined") {
+    return parsePersisted(localStorage.getItem(STORAGE_KEY))
+  }
+  return null
+}
+
+export async function hydrateStore() {
+  if (hydrateStarted) return
+  hydrateStarted = true
+  const persisted = await readPersisted()
+  if (persisted) {
+    setState({ ...persisted, hydrated: true })
+    return
+  }
+  const sample = createSampleList()
+  setState({
+    version: 1,
+    lists: [sample],
+    settings: DEFAULT_SETTINGS,
+    hydrated: true,
+  })
+}
+
+function touchList(list: CityList, patch: Partial<CityList>): CityList {
+  return { ...list, ...patch, updatedAt: new Date().toISOString() }
+}
+
+function parsedToBusiness(row: ParsedRow): Business {
+  return {
+    id: crypto.randomUUID(),
+    ...row,
+  }
+}
+
+export function subscribeStore(listener: () => void) {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+
+export function getStoreSnapshot() {
+  return memoryState
+}
+
+export function getServerSnapshot() {
+  return EMPTY_STATE
+}
+
+export function useAppStore() {
+  return useSyncExternalStore(subscribeStore, getStoreSnapshot, getServerSnapshot)
+}
+
+export function createListFromRows(
+  title: string,
+  rows: ParsedRow[],
+  sourceFileName?: string
+): CityList {
+  const now = new Date().toISOString()
+  return {
+    id: crypto.randomUUID(),
+    title: title.trim(),
+    createdAt: now,
+    updatedAt: now,
+    sourceFileName,
+    businesses: rows.map(parsedToBusiness),
+  }
+}
+
+export function addList(list: CityList) {
+  setState({
+    ...memoryState,
+    lists: [list, ...memoryState.lists],
+  })
+}
+
+export function renameList(listId: string, title: string) {
+  setState({
+    ...memoryState,
+    lists: memoryState.lists.map((list) =>
+      list.id === listId ? touchList(list, { title: title.trim() }) : list
+    ),
+  })
+}
+
+export function deleteList(listId: string) {
+  setState({
+    ...memoryState,
+    lists: memoryState.lists.filter((list) => list.id !== listId),
+  })
+}
+
+export function appendRows(listId: string, rows: ParsedRow[], sourceFileName?: string) {
+  setState({
+    ...memoryState,
+    lists: memoryState.lists.map((list) => {
+      if (list.id !== listId) return list
+      const existingPhones = new Set(
+        list.businesses.map((item) => normalizePhone(item.phone)).filter(Boolean)
+      )
+      const next = rows
+        .filter((row) => {
+          const phone = normalizePhone(row.phone)
+          if (phone && existingPhones.has(phone)) return false
+          if (phone) existingPhones.add(phone)
+          return true
+        })
+        .map(parsedToBusiness)
+      return touchList(list, {
+        businesses: [...list.businesses, ...next],
+        sourceFileName: sourceFileName ?? list.sourceFileName,
+      })
+    }),
+  })
+}
+
+export function updateBusiness(
+  listId: string,
+  businessId: string,
+  patch: Partial<Business>
+) {
+  setState({
+    ...memoryState,
+    lists: memoryState.lists.map((list) => {
+      if (list.id !== listId) return list
+      return touchList(list, {
+        businesses: list.businesses.map((item) =>
+          item.id === businessId ? { ...item, ...patch } : item
+        ),
+      })
+    }),
+  })
+}
+
+export function addBusiness(listId: string, row: ParsedRow) {
+  appendRows(listId, [row])
+}
+
+export function deleteBusiness(listId: string, businessId: string) {
+  setState({
+    ...memoryState,
+    lists: memoryState.lists.map((list) => {
+      if (list.id !== listId) return list
+      return touchList(list, {
+        businesses: list.businesses.filter((item) => item.id !== businessId),
+      })
+    }),
+  })
+}
+
+export function updateSettings(patch: Partial<Settings>) {
+  setState({
+    ...memoryState,
+    settings: { ...memoryState.settings, ...patch },
+  })
+}
+
+export function importBackup(state: Omit<AppState, "hydrated">) {
+  setState({
+    version: 1,
+    lists: state.lists,
+    settings: { ...DEFAULT_SETTINGS, ...state.settings },
+    hydrated: true,
+  })
+}
+
+export function exportBackup(): string {
+  return JSON.stringify(snapshot(), null, 2)
+}
+
+export function countAppended(listId: string, rows: ParsedRow[]): {
+  added: number
+  duplicates: number
+} {
+  const list = memoryState.lists.find((item) => item.id === listId)
+  if (!list) return { added: rows.length, duplicates: 0 }
+  const existingPhones = new Set(
+    list.businesses.map((item) => normalizePhone(item.phone)).filter(Boolean)
+  )
+  let duplicates = 0
+  let added = 0
+  for (const row of rows) {
+    const phone = normalizePhone(row.phone)
+    if (phone && existingPhones.has(phone)) {
+      duplicates += 1
+    } else {
+      added += 1
+      if (phone) existingPhones.add(phone)
+    }
+  }
+  return { added, duplicates }
+}
