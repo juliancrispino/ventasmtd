@@ -21,7 +21,7 @@ import { deleteBusiness, updateBusiness } from "@/lib/store"
 import { hasPhone } from "@/lib/phone"
 import { formatRelative } from "@/lib/dates"
 import { getProspectStatus } from "@/lib/status"
-import { instagramUrl } from "@/lib/whatsapp"
+import { socialUrl } from "@/lib/social"
 import { cn } from "@/lib/utils"
 import type { Business, CityList, ProspectStatus, Settings } from "@/lib/types"
 
@@ -166,7 +166,7 @@ export function BusinessTable({
                   <div
                     className="min-w-0 flex-1"
                     onClick={() => {
-                      const url = instagramUrl(business.social)
+                      const url = socialUrl(business.social)
                       if (url) {
                         window.open(url, "_blank", "noopener,noreferrer")
                         return
@@ -176,7 +176,7 @@ export function BusinessTable({
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault()
-                        const url = instagramUrl(business.social)
+                        const url = socialUrl(business.social)
                         if (url) {
                           window.open(url, "_blank", "noopener,noreferrer")
                           return
@@ -190,7 +190,7 @@ export function BusinessTable({
                     <p
                       className={cn(
                         "truncate text-sm font-semibold leading-tight",
-                        instagramUrl(business.social) && "text-teal-800 underline underline-offset-2"
+                        socialUrl(business.social) && "text-teal-800 underline underline-offset-2"
                       )}
                     >
                       {business.name}
@@ -432,7 +432,7 @@ function NameCell({
   business: Business
   onSaveName: (name: string) => void
 }) {
-  const url = instagramUrl(business.social)
+  const url = socialUrl(business.social)
 
   if (!url) {
     return (

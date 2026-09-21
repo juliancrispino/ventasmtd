@@ -19,18 +19,4 @@ export function buildWhatsAppUrl(phone: string, message: string): string | null 
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`
 }
 
-export function instagramUrl(social: string): string | null {
-  const value = social.trim()
-  if (!value) return null
-  if (/^https?:\/\//i.test(value)) return value
-  const handle = value
-    .replace(/^@/, "")
-    .replace(/^instagram\.com\//i, "")
-    .replace(/^www\.instagram\.com\//i, "")
-    .split(/[/?]/)[0]
-  if (!handle) return null
-  if (/instagram|facebook|tiktok|maps/i.test(value) && value.includes(".")) {
-    return value.startsWith("http") ? value : `https://${value}`
-  }
-  return `https://instagram.com/${handle}`
-}
+export { instagramUrl, socialUrl } from "@/lib/social"
