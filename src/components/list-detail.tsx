@@ -94,23 +94,23 @@ export function ListDetail({ listId }: { listId: string }) {
   return (
     <div className="flex min-h-full flex-col">
       <AppHeader />
-      <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-5 px-4 py-6 sm:px-6">
-        <div className="flex flex-col gap-4">
+      <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-4 px-3 py-4 sm:gap-5 sm:px-6 sm:py-6">
+        <div className="flex flex-col gap-3">
           <Link
             href="/"
             className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="size-4" />
-            Todas las listas
+            Listas
           </Link>
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex flex-col gap-3">
             <div className="min-w-0">
               {editing ? (
                 <div className="flex flex-wrap items-center gap-2">
                   <Input
                     value={title}
                     onChange={(event) => setTitle(event.target.value)}
-                    className="h-10 max-w-sm bg-white text-lg font-semibold"
+                    className="h-11 max-w-sm bg-white text-lg font-semibold"
                     onKeyDown={(event) => {
                       if (event.key === "Enter") saveTitle()
                       if (event.key === "Escape") {
@@ -119,13 +119,13 @@ export function ListDetail({ listId }: { listId: string }) {
                       }
                     }}
                   />
-                  <Button size="sm" onClick={saveTitle}>
+                  <Button className="h-11" onClick={saveTitle}>
                     Guardar
                   </Button>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+                  <h1 className="text-xl font-semibold tracking-tight sm:text-3xl">
                     {list.title}
                   </h1>
                   <Button
@@ -141,26 +141,23 @@ export function ListDetail({ listId }: { listId: string }) {
                   </Button>
                 </div>
               )}
-              <p className="mt-1 text-sm text-muted-foreground">
-                Contactá negocios de {list.title} para presentar Mi Turno Digital.
-              </p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={() => setAddOpen(true)}>
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+              <Button className="h-11" variant="outline" onClick={() => setAddOpen(true)}>
                 <Plus />
                 Negocio
               </Button>
-              <Button variant="outline" onClick={() => setUploadOpen(true)}>
+              <Button className="h-11" variant="outline" onClick={() => setUploadOpen(true)}>
                 <FilePlus2 />
-                Sumar archivo
+                Sumar CSV
               </Button>
-              <Button variant="outline" onClick={exportCsv}>
+              <Button className="h-11" variant="outline" onClick={exportCsv}>
                 <Download />
-                Exportar CSV
+                Exportar
               </Button>
-              <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+              <Button className="h-11" variant="destructive" onClick={() => setDeleteOpen(true)}>
                 <Trash2 />
-                Borrar lista
+                Borrar
               </Button>
             </div>
           </div>

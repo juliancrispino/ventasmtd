@@ -32,18 +32,16 @@ export function Dashboard() {
   return (
     <div className="flex min-h-full flex-col">
       <AppHeader />
-      <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
+      <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-4 px-3 py-4 sm:gap-6 sm:px-6 sm:py-6">
+        <div>
             <p className="text-sm font-medium text-teal-800">
               Prospección comercial
             </p>
-            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            <h1 className="text-xl font-semibold tracking-tight sm:text-3xl">
               Listas por ciudad
             </h1>
             <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-              Cargá CSV o Excel de peluquerías, centros de estética y peluquerías
-              caninas. Contactalas por WhatsApp para presentar{" "}
+              Importá el CSV del molde y contactá por WhatsApp para presentar{" "}
               <a
                 href="https://miturnodigital.com.ar"
                 target="_blank"
@@ -54,7 +52,6 @@ export function Dashboard() {
               </a>
               .
             </p>
-          </div>
         </div>
 
         {hydrated ? <StatsCards stats={stats} followUpDays={settings.followUpDays} /> : <StatsSkeleton />}
@@ -63,7 +60,7 @@ export function Dashboard() {
           <div className="relative w-full sm:max-w-sm">
             <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              className="bg-white pl-8"
+              className="h-11 bg-white pl-8 text-base md:text-sm"
               placeholder="Buscar ciudad o negocio…"
               value={query}
               onChange={(event) => setQuery(event.target.value)}

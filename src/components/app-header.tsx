@@ -13,48 +13,58 @@ export function AppHeader() {
   const [settingsOpen, setSettingsOpen] = useState(false)
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/10 bg-[oklch(0.28_0.045_200)] text-white">
-      <div className="mx-auto flex h-16 max-w-[1400px] items-center justify-between gap-3 px-4 sm:px-6">
-        <Link href="/" className="flex min-w-0 items-center gap-3">
-          <span className="flex size-9 items-center justify-center rounded-xl bg-teal-400 text-[oklch(0.22_0.05_200)] shadow-sm">
-            <CalendarCheck className="size-5" />
+    <header className="sticky top-0 z-40 border-b border-white/10 bg-[oklch(0.28_0.045_200)] pt-[env(safe-area-inset-top)] text-white">
+      <div className="mx-auto flex h-14 max-w-[1400px] items-center justify-between gap-2 px-3 sm:h-16 sm:px-6">
+        <Link href="/" className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-teal-400 text-[oklch(0.22_0.05_200)] sm:size-9 sm:rounded-xl">
+            <CalendarCheck className="size-4 sm:size-5" />
           </span>
           <span className="min-w-0">
             <span className="block truncate text-sm font-semibold tracking-tight">
               Mi Turno Digital
             </span>
-            <span className="block truncate text-xs text-white/65">
+            <span className="hidden truncate text-xs text-white/65 sm:block">
               CRM de prospección
             </span>
           </span>
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="text-white hover:bg-white/10 hover:text-white sm:hidden"
+            nativeButton={false}
+            render={<a href={MOLDE_PATH} download="molde-negocios.csv" />}
+            aria-label="Descargar molde CSV"
+          >
+            <Download />
+          </Button>
           <Button
             variant="ghost"
             size="sm"
-            className="text-white hover:bg-white/10 hover:text-white"
+            className="hidden text-white hover:bg-white/10 hover:text-white sm:inline-flex"
             nativeButton={false}
             render={<a href={MOLDE_PATH} download="molde-negocios.csv" />}
           >
             <Download />
-            <span className="hidden sm:inline">Molde CSV</span>
+            Molde CSV
           </Button>
           <Button
             variant="ghost"
-            size="sm"
+            size="icon-sm"
             className="text-white hover:bg-white/10 hover:text-white"
             onClick={() => setSettingsOpen(true)}
+            aria-label="Mensaje y ajustes"
           >
             <Settings2 />
-            <span className="hidden sm:inline">Mensaje y ajustes</span>
           </Button>
           <Button
             size="sm"
-            className="bg-teal-400 text-[oklch(0.22_0.05_200)] hover:bg-teal-300"
+            className="h-8 bg-teal-400 px-2.5 text-[oklch(0.22_0.05_200)] hover:bg-teal-300 sm:h-8 sm:px-2.5"
             onClick={() => setUploadOpen(true)}
           >
             <Upload />
-            Importar CSV
+            Importar
           </Button>
         </div>
       </div>

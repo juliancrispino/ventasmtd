@@ -7,13 +7,13 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import { buildWhatsAppUrl, fillTemplate } from "@/lib/whatsapp"
 import { formatPhone, hasPhone } from "@/lib/phone"
 import { updateBusiness } from "@/lib/store"
@@ -38,10 +38,6 @@ export function ContactDialog({
     business ? fillTemplate(settings.whatsappMessage, business, city) : ""
   )
 
-  function handleOpenChange(next: boolean) {
-    onOpenChange(next)
-  }
-
   function send() {
     if (!business) return
     const url = buildWhatsAppUrl(business.phone, message)
@@ -59,11 +55,14 @@ export function ContactDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Contactar por WhatsApp</DialogTitle>
-          <DialogDescription>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="bottom"
+        className="max-h-[92dvh] w-full gap-0 rounded-t-2xl sm:max-w-none"
+      >
+        <SheetHeader className="text-left">
+          <SheetTitle>Contactar por WhatsApp</SheetTitle>
+          <SheetDescription>
             {business ? (
               <span>
                 Se va a escribir a <strong>{business.name}</strong>
@@ -73,30 +72,30 @@ export function ContactDialog({
                 . Podés editar el mensaje antes de enviarlo.
               </span>
             ) : (
-              "Elegí un negocio de la tabla."
+              "Elegí un negocio."
             )}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-2">
+          </SheetDescription>
+        </SheetHeader>
+        <div className="grid gap-2 overflow-y-auto px-4 pb-2">
           <Label htmlFor="contact-message">Mensaje</Label>
           <Textarea
             id="contact-message"
-            className="min-h-40"
+            className="min-h-36 text-base"
             value={message}
             onChange={(event) => setMessage(event.target.value)}
           />
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
-          <Button onClick={send} disabled={!business || !hasPhone(business.phone)}>
+        <SheetFooter className="pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <Button className="h-11 w-full" onClick={send} disabled={!business || !hasPhone(business.phone)}>
             <MessageCircle />
             Abrir WhatsApp
             <ExternalLink />
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <Button className="h-11 w-full" variant="outline" onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   )
 }

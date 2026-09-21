@@ -62,27 +62,31 @@ export function StatsCards({
   followUpDays: number
 }) {
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+    <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
       {ITEMS.map((item) => {
         const Icon = item.icon
         const hint =
           item.key === "followup"
-            ? `Más de ${followUpDays} días sin respuesta`
+            ? `Más de ${followUpDays} días`
             : item.hint
         return (
-          <Card key={item.key} size="sm" className="bg-white shadow-sm">
-            <CardContent className="flex items-start gap-3">
+          <Card key={item.key} size="sm" className="bg-white py-3 shadow-sm">
+            <CardContent className="flex items-center gap-2 px-3">
               <span
-                className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${item.color}`}
+                className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${item.color}`}
               >
                 <Icon className="size-4" />
               </span>
               <div className="min-w-0">
-                <p className="text-2xl font-semibold tracking-tight">
+                <p className="text-xl font-semibold tracking-tight leading-none">
                   {stats[item.key]}
                 </p>
-                <p className="text-sm font-medium text-foreground">{item.label}</p>
-                <p className="text-xs text-muted-foreground">{hint}</p>
+                <p className="truncate text-xs font-medium text-foreground">
+                  {item.label}
+                </p>
+                <p className="hidden truncate text-[11px] text-muted-foreground sm:block">
+                  {hint}
+                </p>
               </div>
             </CardContent>
           </Card>
