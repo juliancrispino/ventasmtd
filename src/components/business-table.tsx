@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Search, Trash2 } from "lucide-react"
+import { Pencil, Search, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -21,6 +21,7 @@ import { deleteBusiness, updateBusiness } from "@/lib/store"
 import { hasPhone } from "@/lib/phone"
 import { formatRelative } from "@/lib/dates"
 import { getProspectStatus } from "@/lib/status"
+import { instagramUrl } from "@/lib/whatsapp"
 import { cn } from "@/lib/utils"
 import type { Business, CityList, ProspectStatus, Settings } from "@/lib/types"
 
@@ -164,17 +165,34 @@ export function BusinessTable({
                 >
                   <div
                     className="min-w-0 flex-1"
-                    onClick={() => setEditing(business)}
+                    onClick={() => {
+                      const url = instagramUrl(business.social)
+                      if (url) {
+                        window.open(url, "_blank", "noopener,noreferrer")
+                        return
+                      }
+                      setEditing(business)
+                    }}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault()
+                        const url = instagramUrl(business.social)
+                        if (url) {
+                          window.open(url, "_blank", "noopener,noreferrer")
+                          return
+                        }
                         setEditing(business)
                       }
                     }}
                     role="button"
                     tabIndex={0}
                   >
-                    <p className="truncate text-sm font-semibold leading-tight">
+                    <p
+                      className={cn(
+                        "truncate text-sm font-semibold leading-tight",
+                        instagramUrl(business.social) && "text-teal-800 underline underline-offset-2"
+                      )}
+                    >
                       {business.name}
                     </p>
                     <p className="truncate text-[11px] text-muted-foreground leading-tight">
@@ -234,7 +252,6 @@ export function BusinessTable({
                   <TableHead>Rubro</TableHead>
                   <TableHead>Ubicación</TableHead>
                   <TableHead>WhatsApp</TableHead>
-                  <TableHead>Redes</TableHead>
                   <TableHead className="text-center">Contactado</TableHead>
                   <TableHead className="text-center">OK</TableHead>
                   <TableHead className="text-center">Negativa</TableHead>
@@ -252,10 +269,9 @@ export function BusinessTable({
                       className={cn("border-l-4", ROW_BG[status], ROW_BORDER[status])}
                     >
                       <TableCell className="min-w-44">
-                        <TableField
-                          value={business.name}
-                          ariaLabel={`Nombre de ${business.name}`}
-                          onSave={(name) => {
+                        <NameCell
+                          business={business}
+                          onSaveName={(name) => {
                             if (!name) {
                               toast.error("El nombre no puede quedar vacío.")
                               return
@@ -291,16 +307,6 @@ export function BusinessTable({
                           placeholder="WhatsApp"
                           onSave={(phone) =>
                             updateBusiness(list.id, business.id, { phone })
-                          }
-                        />
-                      </TableCell>
-                      <TableCell className="min-w-36">
-                        <TableField
-                          value={business.social}
-                          ariaLabel={`Redes de ${business.name}`}
-                          placeholder="@instagram"
-                          onSave={(social) =>
-                            updateBusiness(list.id, business.id, { social })
                           }
                         />
                       </TableCell>
@@ -353,6 +359,14 @@ export function BusinessTable({
                       <TableCell>
                         <div className="flex justify-end gap-1">
                           <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            aria-label={`Editar ${business.name}`}
+                            onClick={() => setEditing(business)}
+                          >
+                            <Pencil />
+                          </Button>
+                          <Button
                             size="sm"
                             disabled={!hasPhone(business.phone)}
                             onClick={() => setContact(business)}
@@ -383,8 +397,8 @@ export function BusinessTable({
 
       <p className="px-1 text-xs text-muted-foreground">
         Mostrando {rows.length} de {list.businesses.length} negocios.
-        En la computadora, hacé clic en un dato para corregirlo. En el celular,
-        tocá el nombre o ✏️.
+        Si tiene Instagram u otra red, el nombre abre esa página en otra pestaña.
+        El lápiz edita los datos, incluida la red.
       </p>
 
       <ContactDialog
@@ -408,6 +422,38 @@ export function BusinessTable({
         business={editing}
       />
     </div>
+  )
+}
+
+function NameCell({
+  business,
+  onSaveName,
+}: {
+  business: Business
+  onSaveName: (name: string) => void
+}) {
+  const url = instagramUrl(business.social)
+
+  if (!url) {
+    return (
+      <TableField
+        value={business.name}
+        ariaLabel={`Nombre de ${business.name}`}
+        onSave={onSaveName}
+      />
+    )
+  }
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="Abrir red social en otra pestaña"
+      className="font-medium text-teal-800 underline underline-offset-2"
+    >
+      {business.name}
+    </a>
   )
 }
 
