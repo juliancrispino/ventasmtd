@@ -21,6 +21,9 @@ const EMPTY_STATE: AppState = {
   lists: [],
   settings: DEFAULT_SETTINGS,
   hydrated: false,
+  persistence: "local",
+  claimUrl: null,
+  cloudError: null,
 }
 
 let memoryState: AppState = EMPTY_STATE
@@ -39,7 +42,7 @@ function setState(next: AppState) {
   }
 }
 
-function snapshot(): Omit<AppState, "hydrated"> {
+function snapshot(): Omit<AppState, "hydrated" | "persistence" | "claimUrl" | "cloudError"> {
   return {
     version: 1,
     lists: memoryState.lists,
@@ -60,12 +63,16 @@ function openDb(): Promise<IDBDatabase> {
   })
 }
 
-async function persist(state: AppState) {
-  const payload = JSON.stringify({
+function persistPayload(state: AppState) {
+  return JSON.stringify({
     version: 1,
     lists: state.lists,
     settings: state.settings,
   })
+}
+
+async function persistLocal(state: AppState) {
+  const payload = persistPayload(state)
   try {
     localStorage.setItem(STORAGE_KEY, payload)
   } catch {
@@ -85,13 +92,54 @@ async function persist(state: AppState) {
   }
 }
 
-function parsePersisted(raw: string | null): Omit<AppState, "hydrated"> | null {
+let cloudTimer: ReturnType<typeof setTimeout> | null = null
+let cloudWrite = 0
+
+async function persistCloud(state: AppState) {
+  if (state.persistence !== "neon") {
+    await persistLocal(state)
+    return
+  }
+  const ticket = ++cloudWrite
+  try {
+    const response = await fetch("/api/crm", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: persistPayload(state),
+    })
+    const data = (await response.json()) as { ok?: boolean; error?: string }
+    if (ticket !== cloudWrite) return
+    if (!response.ok || !data.ok) {
+      throw new Error(data.error || "No se pudo guardar en Neon")
+    }
+    if (memoryState.cloudError) {
+      setState({ ...memoryState, cloudError: null })
+    }
+    await persistLocal(state)
+  } catch (error) {
+    if (ticket !== cloudWrite) return
+    setState({
+      ...memoryState,
+      cloudError: error instanceof Error ? error.message : "No se pudo guardar en Neon",
+    })
+    await persistLocal(state)
+  }
+}
+
+function persist(state: AppState) {
+  void persistLocal(state)
+  if (cloudTimer) clearTimeout(cloudTimer)
+  cloudTimer = setTimeout(() => {
+    void persistCloud(memoryState)
+  }, 400)
+}
+
+function parsePersisted(raw: string | null): Pick<AppState, "lists" | "settings"> | null {
   if (!raw) return null
   try {
     const data = JSON.parse(raw) as Partial<AppState>
     if (!data || data.version !== 1 || !Array.isArray(data.lists)) return null
     return {
-      version: 1,
       lists: data.lists,
       settings: { ...DEFAULT_SETTINGS, ...data.settings },
     }
@@ -100,7 +148,7 @@ function parsePersisted(raw: string | null): Omit<AppState, "hydrated"> | null {
   }
 }
 
-async function readPersisted(): Promise<Omit<AppState, "hydrated"> | null> {
+async function readPersisted(): Promise<Pick<AppState, "lists" | "settings"> | null> {
   try {
     const db = await openDb()
     const fromDb = await new Promise<string | null>((resolve, reject) => {
@@ -125,15 +173,58 @@ export async function hydrateStore() {
   if (hydrateStarted) return
   hydrateStarted = true
   const persisted = await readPersisted()
-  if (persisted) {
-    setState({ ...persisted, hydrated: true })
-    return
+
+  try {
+    const response = await fetch("/api/crm")
+    const data = (await response.json()) as {
+      ok?: boolean
+      persistence?: "neon" | "local"
+      lists?: AppState["lists"]
+      settings?: Settings
+      claimUrl?: string | null
+      error?: string
+    }
+    if (response.ok && data.ok && data.persistence === "neon") {
+      const cloudLists = Array.isArray(data.lists) ? data.lists : []
+      const cloudSettings = { ...DEFAULT_SETTINGS, ...data.settings }
+      if (cloudLists.length === 0 && persisted && persisted.lists.length > 0) {
+        setState({
+          version: 1,
+          lists: persisted.lists,
+          settings: persisted.settings,
+          hydrated: true,
+          persistence: "neon",
+          claimUrl: data.claimUrl ?? null,
+          cloudError: null,
+        })
+        await persistCloud(memoryState)
+        return
+      }
+      setState({
+        version: 1,
+        lists: cloudLists,
+        settings: cloudSettings,
+        hydrated: true,
+        persistence: "neon",
+        claimUrl: data.claimUrl ?? null,
+        cloudError: null,
+      })
+      return
+    }
+  } catch {
+    // seguimos con el cache local
   }
+
   setState({
     version: 1,
-    lists: [],
-    settings: DEFAULT_SETTINGS,
+    lists: persisted?.lists ?? [],
+    settings: persisted?.settings ?? DEFAULT_SETTINGS,
     hydrated: true,
+    persistence: "local",
+    claimUrl: null,
+    cloudError: persisted
+      ? null
+      : "La app está usando este navegador. Conectá Neon para guardar online.",
   })
 }
 
@@ -143,6 +234,9 @@ export async function resetDatabase() {
     lists: [],
     settings: DEFAULT_SETTINGS,
     hydrated: true,
+    persistence: memoryState.persistence,
+    claimUrl: memoryState.claimUrl,
+    cloudError: null,
   })
 }
 
@@ -331,12 +425,17 @@ export function updateSettings(patch: Partial<Settings>) {
   })
 }
 
-export function importBackup(state: Omit<AppState, "hydrated">) {
+export function importBackup(
+  state: Pick<AppState, "lists" | "settings"> & { version: 1 }
+) {
   setState({
     version: 1,
     lists: state.lists,
     settings: { ...DEFAULT_SETTINGS, ...state.settings },
     hydrated: true,
+    persistence: memoryState.persistence,
+    claimUrl: memoryState.claimUrl,
+    cloudError: null,
   })
 }
 

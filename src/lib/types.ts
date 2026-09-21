@@ -25,11 +25,16 @@ export type Settings = {
   followUpDays: number
 }
 
+export type PersistenceMode = "neon" | "local"
+
 export type AppState = {
   version: 1
   lists: CityList[]
   settings: Settings
   hydrated: boolean
+  persistence: PersistenceMode
+  claimUrl: string | null
+  cloudError: string | null
 }
 
 export type ProspectStatus = "pending" | "recent" | "followup" | "ok" | "no"

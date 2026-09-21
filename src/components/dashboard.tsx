@@ -88,7 +88,8 @@ export function Dashboard() {
             <h2 className="text-lg font-semibold">La base está vacía</h2>
             <p className="mt-1 max-w-md text-sm text-muted-foreground">
               Descargá el molde CSV, completalo (o usá el archivo de prueba de
-              Mar del Plata) e importalo. Cada ciudad del archivo arma su lista.
+              Mar del Plata) e importalo. Cada ciudad arma su lista y todo
+              queda en la base Neon (Postgres online).
             </p>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
             <Button

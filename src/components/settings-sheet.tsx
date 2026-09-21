@@ -31,7 +31,7 @@ export function SettingsSheet({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const { settings, lists } = useAppStore()
+  const { settings, lists, persistence, claimUrl, cloudError } = useAppStore()
   const fileRef = useRef<HTMLInputElement>(null)
   const [message, setMessage] = useState(settings.whatsappMessage)
   const [days, setDays] = useState(String(settings.followUpDays))
@@ -137,11 +137,27 @@ export function SettingsSheet({
             </p>
           </div>
           <div className="grid gap-2 rounded-xl border bg-muted/40 p-3">
-            <p className="text-sm font-medium">Respaldo</p>
+            <p className="text-sm font-medium">Base de datos</p>
             <p className="text-xs text-muted-foreground">
-              Los datos viven en este navegador ({lists.length} listas).
-              Descargá un backup si cambiás de computadora.
+              {persistence === "neon"
+                ? `Importaciones y ajustes se guardan en Neon (Postgres online). ${lists.length} listas.`
+                : `Ahora mismo los datos quedan en este navegador (${lists.length} listas). Conectá Neon para guardarlos online.`}
             </p>
+            {cloudError && (
+              <p className="text-xs text-rose-700">{cloudError}</p>
+            )}
+            {claimUrl && (
+              <Button
+                variant="outline"
+                size="sm"
+                nativeButton={false}
+                render={
+                  <a href={claimUrl} target="_blank" rel="noopener noreferrer" />
+                }
+              >
+                Quedarte con esta base (gratis)
+              </Button>
+            )}
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={downloadBackup}>
                 <Download />

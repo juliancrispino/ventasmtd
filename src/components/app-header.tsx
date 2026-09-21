@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button"
 import { UploadDialog } from "@/components/upload-dialog"
 import { SettingsSheet } from "@/components/settings-sheet"
 import { MOLDE_PATH } from "@/lib/csv"
+import { useAppStore } from "@/lib/store"
 
 export function AppHeader() {
+  const { persistence } = useAppStore()
   const [uploadOpen, setUploadOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
 
@@ -24,7 +26,9 @@ export function AppHeader() {
               Mi Turno Digital
             </span>
             <span className="hidden truncate text-xs text-white/65 sm:block">
-              CRM de prospección
+              {persistence === "neon"
+                ? "Guardado en Neon (online)"
+                : "CRM de prospección"}
             </span>
           </span>
         </Link>

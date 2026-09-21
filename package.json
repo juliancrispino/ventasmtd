@@ -6,10 +6,12 @@
     "dev": "next dev --port 43221 --hostname 127.0.0.1",
     "build": "next build",
     "start": "next start --port 43221 --hostname 127.0.0.1",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:create": "npx neon-new@latest --yes --env .env.local --seed db/schema.sql --ref crm-miturno-digital"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
+    "@neondatabase/serverless": "^1.1.0",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.3.2",
     "lucide-react": "^1.47.0",
