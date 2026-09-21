@@ -1,11 +1,12 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
-import { CalendarCheck, Settings2, Upload } from "lucide-react"
+import { CalendarCheck, Download, Settings2, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { UploadDialog } from "@/components/upload-dialog"
 import { SettingsSheet } from "@/components/settings-sheet"
-import { useState } from "react"
+import { MOLDE_PATH } from "@/lib/csv"
 
 export function AppHeader() {
   const [uploadOpen, setUploadOpen] = useState(false)
@@ -32,6 +33,16 @@ export function AppHeader() {
             variant="ghost"
             size="sm"
             className="text-white hover:bg-white/10 hover:text-white"
+            nativeButton={false}
+            render={<a href={MOLDE_PATH} download="molde-negocios.csv" />}
+          >
+            <Download />
+            <span className="hidden sm:inline">Molde CSV</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-white hover:bg-white/10 hover:text-white"
             onClick={() => setSettingsOpen(true)}
           >
             <Settings2 />
@@ -43,7 +54,7 @@ export function AppHeader() {
             onClick={() => setUploadOpen(true)}
           >
             <Upload />
-            Cargar lista
+            Importar CSV
           </Button>
         </div>
       </div>

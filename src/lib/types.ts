@@ -35,6 +35,7 @@ export type AppState = {
 export type ProspectStatus = "pending" | "recent" | "followup" | "ok" | "no"
 
 export type ParsedRow = {
+  city: string
   name: string
   category: string
   address: string

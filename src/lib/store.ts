@@ -1,7 +1,6 @@
 "use client"
 
 import { useSyncExternalStore } from "react"
-import { createSampleList } from "@/lib/seed"
 import {
   DEFAULT_SETTINGS,
   type AppState,
@@ -12,10 +11,10 @@ import {
 } from "@/lib/types"
 import { normalizePhone } from "@/lib/phone"
 
-const DB_NAME = "mtd-crm"
+const DB_NAME = "mtd-crm-v2"
 const STORE_NAME = "kv"
 const STATE_KEY = "state"
-const STORAGE_KEY = "mtd-crm-v1"
+const STORAGE_KEY = "mtd-crm-v2"
 
 const EMPTY_STATE: AppState = {
   version: 1,
@@ -130,10 +129,18 @@ export async function hydrateStore() {
     setState({ ...persisted, hydrated: true })
     return
   }
-  const sample = createSampleList()
   setState({
     version: 1,
-    lists: [sample],
+    lists: [],
+    settings: DEFAULT_SETTINGS,
+    hydrated: true,
+  })
+}
+
+export async function resetDatabase() {
+  setState({
+    version: 1,
+    lists: [],
     settings: DEFAULT_SETTINGS,
     hydrated: true,
   })
@@ -146,7 +153,15 @@ function touchList(list: CityList, patch: Partial<CityList>): CityList {
 function parsedToBusiness(row: ParsedRow): Business {
   return {
     id: crypto.randomUUID(),
-    ...row,
+    name: row.name,
+    category: row.category,
+    address: row.address,
+    phone: row.phone,
+    social: row.social,
+    contacted: row.contacted,
+    respondedOk: row.respondedOk,
+    respondedNo: row.respondedNo,
+    lastMessageAt: row.lastMessageAt,
   }
 }
 
@@ -188,6 +203,51 @@ export function addList(list: CityList) {
     ...memoryState,
     lists: [list, ...memoryState.lists],
   })
+}
+
+export function importRows(
+  rows: ParsedRow[],
+  sourceFileName?: string,
+  options?: { appendToListId?: string; fallbackCity?: string }
+): { added: number; listsTouched: string[] } {
+  if (options?.appendToListId) {
+    const before = memoryState.lists.find((list) => list.id === options.appendToListId)
+    const existing = before?.businesses.length ?? 0
+    appendRows(options.appendToListId, rows, sourceFileName)
+    const after = memoryState.lists.find((list) => list.id === options.appendToListId)
+    return {
+      added: Math.max(0, (after?.businesses.length ?? 0) - existing),
+      listsTouched: after ? [after.title] : [],
+    }
+  }
+
+  const grouped = new Map<string, ParsedRow[]>()
+  for (const row of rows) {
+    const city = (row.city || options?.fallbackCity || "").trim() || "Sin ciudad"
+    const current = grouped.get(city) ?? []
+    current.push(row)
+    grouped.set(city, current)
+  }
+
+  const listsTouched: string[] = []
+  let added = 0
+  for (const [city, cityRows] of grouped) {
+    const existing = memoryState.lists.find(
+      (list) => list.title.trim().toLowerCase() === city.toLowerCase()
+    )
+    if (existing) {
+      const countBefore = existing.businesses.length
+      appendRows(existing.id, cityRows, sourceFileName)
+      const updated = memoryState.lists.find((list) => list.id === existing.id)
+      added += Math.max(0, (updated?.businesses.length ?? 0) - countBefore)
+      listsTouched.push(city)
+    } else {
+      addList(createListFromRows(city, cityRows, sourceFileName))
+      added += cityRows.length
+      listsTouched.push(city)
+    }
+  }
+  return { added, listsTouched }
 }
 
 export function renameList(listId: string, title: string) {

@@ -4,13 +4,25 @@ Página de administración para cargar listas de peluquerías, centros de estét
 
 ## Qué hace
 
-- Carga CSV o Excel por ciudad o pueblo.
-- Arma una tabla con nombre, rubro, ubicación, WhatsApp y redes.
-- Abre WhatsApp con un mensaje precargado para presentar Mi Turno Digital.
-- Marca **contactado**, **respondió OK** y **respuesta negativa**.
-- Guarda la fecha del último mensaje y pinta en amarillo los negocios con más de 15 días sin respuesta.
+- Base de datos simple, vacía al inicio, guardada en el navegador.
+- Importa CSV (o Excel) con las columnas del **molde**.
+- Descarga el molde desde la página para no errar los campos.
+- Agrupa por la columna `ciudad`.
+- Abre WhatsApp con un mensaje precargado.
+- Marca contactado, respondió OK y respuesta negativa.
+- Pinta en amarillo si pasaron más de 15 días sin respuesta.
 
-Los datos se guardan en el navegador (IndexedDB / localStorage). No hace falta base de datos ni login. Si cambiás de computadora, usá **Mensaje y ajustes → Descargar backup**.
+## Cómo importar
+
+1. Descargá **Molde CSV**.
+2. Completá las filas (o usá `datos-prueba-mar-del-plata.csv` para probar).
+3. Importar CSV → se crean las listas por ciudad.
+
+El molde usa punto y coma (`;`), el separador que espera Excel en español:
+
+`ciudad;nombre;rubro;ubicacion;numero de telefono;redes sociales;contactado;respondio ok;respuesta negativa;ultimo mensaje enviado`
+
+Los datos viven en este navegador. En *Mensaje y ajustes* podés vaciar la base o descargar un backup JSON.
 
 ## Cómo correrla en local
 
@@ -23,34 +35,6 @@ La app queda en [http://localhost:43221](http://localhost:43221).
 
 ## Cómo publicarla en Vercel
 
-1. Subí este repositorio a GitHub.
-2. En [vercel.com](https://vercel.com) importá el repo.
-3. Framework: Next.js. Build: `next build`. No hace falta variable de entorno.
-4. Deploy.
-
-## Formato de archivo
-
-La plantilla está en `public/plantilla-negocios.csv`. Columnas reconocidas:
-
-| Columna | Alias aceptados |
-| --- | --- |
-| nombre | name, negocio |
-| rubro | categoria, tipo |
-| ubicacion | direccion, address |
-| numero de telefono | telefono, whatsapp, celular |
-| redes sociales | instagram, redes, ig |
-| contactado | contacted |
-| respondio ok | interesado |
-| respuesta negativa | negativo |
-| ultimo mensaje enviado | fecha |
-
-Al subir un archivo pedí el **título de la ciudad** para separar Mar del Plata, Tandil, Balcarce, etc.
-
-## Mensaje de WhatsApp
-
-Se edita en **Mensaje y ajustes**. Variables disponibles:
-
-- `{{nombre}}`
-- `{{rubro}}`
-- `{{ciudad}}`
-- `{{direccion}}`
+1. Importá el repo en [vercel.com/new](https://vercel.com/new).
+2. Framework: Next.js. Build: `next build`.
+3. Deploy. No hace falta variable de entorno.

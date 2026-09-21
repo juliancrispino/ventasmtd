@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react"
 import { toast } from "sonner"
-import { Download, Upload } from "lucide-react"
+import { Download, Trash2, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -18,6 +18,7 @@ import {
 import {
   exportBackup,
   importBackup,
+  resetDatabase,
   updateSettings,
   useAppStore,
 } from "@/lib/store"
@@ -153,6 +154,18 @@ export function SettingsSheet({
               >
                 <Upload />
                 Restaurar
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  void resetDatabase()
+                  toast.success("Base de datos vaciada")
+                  onOpenChange(false)
+                }}
+              >
+                <Trash2 />
+                Vaciar base
               </Button>
               <input
                 ref={fileRef}

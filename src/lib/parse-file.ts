@@ -1,5 +1,6 @@
 import Papa from "papaparse"
 import { parseFlexibleDate } from "@/lib/dates"
+import { CSV_DELIMITER, CSV_HEADERS } from "@/lib/csv"
 import type { ParseResult, ParsedRow } from "@/lib/types"
 
 function normalizeKey(value: string): string {
@@ -11,7 +12,8 @@ function normalizeKey(value: string): string {
     .trim()
 }
 
-const COLUMN_ALIASES: Record<keyof Omit<ParsedRow, never>, string[]> = {
+const COLUMN_ALIASES: Record<keyof ParsedRow, string[]> = {
+  city: ["ciudad", "city", "pueblo", "localidad"],
   name: ["nombre", "name", "negocio", "local", "comercio", "salon"],
   category: ["rubro", "categoria", "category", "tipo", "giro"],
   address: [
@@ -109,12 +111,17 @@ function mapRows(rawRows: Record<string, unknown>[]): ParseResult {
   const warnings: string[] = []
   if (!mappedFields.has("name")) {
     warnings.push(
-      "No encontré una columna de nombre. Se van a importar las filas que tengan algún dato, usando la primera columna como nombre."
+      "No encontré una columna de nombre. Descargá el molde CSV y copiá exactamente esos encabezados."
     )
   }
   if (!mappedFields.has("phone")) {
     warnings.push(
-      "No encontré una columna de teléfono. Vas a poder completarlos después, pero el botón de WhatsApp queda deshabilitado sin número."
+      "No encontré una columna de teléfono. En el molde se llama “numero de telefono”."
+    )
+  }
+  if (!mappedFields.has("city")) {
+    warnings.push(
+      "No encontré la columna ciudad. Si no la completás acá, tenés que indicar la ciudad antes de importar."
     )
   }
 
@@ -136,6 +143,7 @@ function mapRows(rawRows: Record<string, unknown>[]): ParseResult {
     const address = cellText(get("address"))
     const phone = cellText(get("phone"))
     const social = cellText(get("social"))
+    const city = cellText(get("city"))
 
     if (!name && !phone && !address) {
       skipped += 1
@@ -143,6 +151,7 @@ function mapRows(rawRows: Record<string, unknown>[]): ParseResult {
     }
 
     rows.push({
+      city,
       name: name || "Sin nombre",
       category,
       address,
@@ -163,7 +172,7 @@ function mapRows(rawRows: Record<string, unknown>[]): ParseResult {
 }
 
 function parseCsv(text: string): ParseResult {
-  const parsed = Papa.parse<Record<string, unknown>>(text, {
+  const parsed = Papa.parse<Record<string, unknown>>(text.replace(/^\uFEFF/, ""), {
     header: true,
     skipEmptyLines: "greedy",
     transformHeader: (header) => header.trim(),
@@ -174,7 +183,7 @@ function parseCsv(text: string): ParseResult {
       skipped: 0,
       detectedColumns: [],
       warnings: [
-        parsed.errors[0]?.message || "No se pudo leer el CSV. Revisá el formato.",
+        parsed.errors[0]?.message || "No se pudo leer el CSV. Usá el molde de la página.",
       ],
     }
   }
@@ -213,18 +222,51 @@ export async function parseProspectFile(file: File): Promise<ParseResult> {
   return mapRows(json)
 }
 
-export function toCsv(rows: ParsedRow[]): string {
+export function toCsv(
+  rows: Array<{
+    city?: string
+    name: string
+    category: string
+    address: string
+    phone: string
+    social: string
+    contacted: boolean
+    respondedOk: boolean
+    respondedNo: boolean
+    lastMessageAt: string | null
+  }>,
+  cityFallback = ""
+): string {
   return Papa.unparse(
-    rows.map((row) => ({
-      nombre: row.name,
-      rubro: row.category,
-      ubicacion: row.address,
-      "numero de telefono": row.phone,
-      "redes sociales": row.social,
-      contactado: row.contacted ? "TRUE" : "FALSE",
-      "respondio ok": row.respondedOk ? "TRUE" : "FALSE",
-      "respuesta negativa": row.respondedNo ? "TRUE" : "FALSE",
-      "ultimo mensaje enviado": row.lastMessageAt ?? "",
-    }))
+    {
+      fields: [...CSV_HEADERS],
+      data: rows.map((row) => [
+        row.city || cityFallback,
+        row.name,
+        row.category,
+        row.address,
+        row.phone,
+        row.social,
+        row.contacted ? "TRUE" : "FALSE",
+        row.respondedOk ? "TRUE" : "FALSE",
+        row.respondedNo ? "TRUE" : "FALSE",
+        row.lastMessageAt ?? "",
+      ]),
+    },
+    { delimiter: CSV_DELIMITER }
   )
+}
+
+export function templateCsv(): string {
+  return Papa.unparse({ fields: [...CSV_HEADERS], data: [] }, { delimiter: CSV_DELIMITER })
+}
+
+export function downloadTextFile(filename: string, content: string, mime = "text/csv;charset=utf-8") {
+  const blob = new Blob([`\uFEFF${content}`], { type: mime })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement("a")
+  anchor.href = url
+  anchor.download = filename
+  anchor.click()
+  URL.revokeObjectURL(url)
 }

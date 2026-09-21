@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/dialog"
 import { deleteList, renameList, useAppStore } from "@/lib/store"
 import { listStats } from "@/lib/status"
-import { toCsv } from "@/lib/parse-file"
+import { downloadTextFile, toCsv } from "@/lib/parse-file"
 
 export function ListDetail({ listId }: { listId: string }) {
   const router = useRouter()
@@ -73,14 +73,11 @@ export function ListDetail({ listId }: { listId: string }) {
 
   function exportCsv() {
     if (!list) return
-    const csv = toCsv(list.businesses)
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement("a")
-    anchor.href = url
-    anchor.download = `${list.title.toLowerCase().replace(/\s+/g, "-")}.csv`
-    anchor.click()
-    URL.revokeObjectURL(url)
+    const csv = toCsv(list.businesses, list.title)
+    downloadTextFile(
+      `${list.title.toLowerCase().replace(/\s+/g, "-")}.csv`,
+      csv
+    )
   }
 
   function saveTitle() {

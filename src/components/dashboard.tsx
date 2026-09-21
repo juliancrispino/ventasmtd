@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { FolderOpen, Search, Upload } from "lucide-react"
+import { Download, FolderOpen, Search, Upload } from "lucide-react"
 import { AppHeader } from "@/components/app-header"
 import { ListCard } from "@/components/list-card"
 import { StatsCards } from "@/components/stats-cards"
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { allStats } from "@/lib/status"
 import { useAppStore } from "@/lib/store"
+import { DATOS_PRUEBA_PATH, MOLDE_PATH } from "@/lib/csv"
 
 export function Dashboard() {
   const { lists, settings, hydrated } = useAppStore()
@@ -87,15 +88,33 @@ export function Dashboard() {
             <span className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-teal-50 text-teal-800">
               <FolderOpen className="size-6" />
             </span>
-            <h2 className="text-lg font-semibold">Todavía no hay listas</h2>
+            <h2 className="text-lg font-semibold">La base está vacía</h2>
             <p className="mt-1 max-w-md text-sm text-muted-foreground">
-              Subí un archivo de scraping con los negocios de un pueblo o ciudad.
-              Usá el título para separar Mar del Plata, Tandil, Balcarce y el resto.
+              Descargá el molde CSV, completalo (o usá el archivo de prueba de
+              Mar del Plata) e importalo. Cada ciudad del archivo arma su lista.
             </p>
-            <Button className="mt-4" onClick={() => setUploadOpen(true)}>
-              <Upload />
-              Cargar primera lista
-            </Button>
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={<a href={MOLDE_PATH} download="molde-negocios.csv" />}
+            >
+                <Download />
+                Descargar molde
+              </Button>
+              <Button
+                variant="outline"
+                nativeButton={false}
+                render={<a href={DATOS_PRUEBA_PATH} download="datos-prueba-mar-del-plata.csv" />}
+              >
+                <Download />
+                CSV de prueba
+              </Button>
+              <Button onClick={() => setUploadOpen(true)}>
+                <Upload />
+                Importar CSV
+              </Button>
+            </div>
           </div>
         ) : filtered.length === 0 ? (
           <div className="rounded-2xl border border-dashed bg-white px-6 py-16 text-center">

@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
-import { FileSpreadsheet, MapPin, Upload } from "lucide-react"
+import { Download, FileSpreadsheet, MapPin, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -14,14 +14,9 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  addList,
-  appendRows,
-  countAppended,
-  createListFromRows,
-  useAppStore,
-} from "@/lib/store"
+import { importRows } from "@/lib/store"
 import { parseProspectFile } from "@/lib/parse-file"
+import { DATOS_PRUEBA_PATH, MOLDE_PATH } from "@/lib/csv"
 import type { ParsedRow } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -36,7 +31,6 @@ export function UploadDialog({
   onOpenChange,
   appendToListId,
 }: UploadDialogProps) {
-  const { lists } = useAppStore()
   const fileRef = useRef<HTMLInputElement>(null)
   const [title, setTitle] = useState("")
   const [fileName, setFileName] = useState("")
@@ -45,14 +39,13 @@ export function UploadDialog({
   const [detected, setDetected] = useState<string[]>([])
   const [dragging, setDragging] = useState(false)
   const [parsing, setParsing] = useState(false)
-  const [targetListId, setTargetListId] = useState(appendToListId ?? "new")
 
-  const targetList = lists.find((list) => list.id === targetListId)
-
-  const duplicateInfo = useMemo(() => {
-    if (targetListId === "new") return null
-    return countAppended(targetListId, rows)
-  }, [targetListId, rows])
+  const citiesInFile = useMemo(() => {
+    const names = new Set(
+      rows.map((row) => row.city.trim()).filter(Boolean)
+    )
+    return [...names]
+  }, [rows])
 
   function reset() {
     setTitle("")
@@ -60,7 +53,6 @@ export function UploadDialog({
     setRows([])
     setWarnings([])
     setDetected([])
-    setTargetListId(appendToListId ?? "new")
     if (fileRef.current) fileRef.current.value = ""
   }
 
@@ -73,11 +65,11 @@ export function UploadDialog({
       setRows(result.rows)
       setWarnings(result.warnings)
       setDetected(result.detectedColumns)
-      if (!title && !appendToListId) {
-        const guessed = file.name
-          .replace(/\.(csv|xlsx|xls|txt)$/i, "")
-          .replace(/[-_]+/g, " ")
-        setTitle(guessed)
+      const fileCities = [
+        ...new Set(result.rows.map((row) => row.city.trim()).filter(Boolean)),
+      ]
+      if (!title && !appendToListId && fileCities.length === 1) {
+        setTitle(fileCities[0])
       }
       if (result.rows.length) {
         toast.success(`${result.rows.length} negocios leídos de ${file.name}`)
@@ -86,7 +78,7 @@ export function UploadDialog({
       toast.error(
         error instanceof Error
           ? error.message
-          : "No se pudo leer el archivo. Probá CSV o Excel."
+          : "No se pudo leer el archivo. Usá el molde CSV."
       )
     } finally {
       setParsing(false)
@@ -98,24 +90,18 @@ export function UploadDialog({
       toast.error("Cargá un CSV o Excel antes de importar.")
       return
     }
-    if (targetListId === "new") {
-      const city = title.trim()
-      if (!city) {
-        toast.error("Indicá la ciudad o pueblo de esta lista.")
-        return
-      }
-      const list = createListFromRows(city, rows, fileName)
-      addList(list)
-      toast.success(`Lista “${city}” creada con ${rows.length} negocios.`)
-    } else if (targetList) {
-      const { added, duplicates } = countAppended(targetListId, rows)
-      appendRows(targetListId, rows, fileName)
-      toast.success(
-        `Se agregaron ${added} negocios a ${targetList.title}${
-          duplicates ? ` (${duplicates} duplicados por teléfono omitidos)` : ""
-        }.`
-      )
+    const missingCity = rows.some((row) => !row.city.trim())
+    if (!appendToListId && missingCity && !title.trim()) {
+      toast.error("Completá la ciudad o usá el molde con la columna ciudad.")
+      return
     }
+    const result = importRows(rows, fileName, {
+      appendToListId,
+      fallbackCity: title.trim() || undefined,
+    })
+    toast.success(
+      `Se importaron ${result.added} negocios en ${result.listsTouched.join(", ")}.`
+    )
     reset()
     onOpenChange(false)
   }
@@ -131,18 +117,39 @@ export function UploadDialog({
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
-            {appendToListId ? "Agregar archivo a esta lista" : "Cargar lista de negocios"}
+            {appendToListId ? "Agregar archivo a esta lista" : "Importar CSV"}
           </DialogTitle>
           <DialogDescription>
-            Subí un CSV o Excel con nombre, rubro, ubicación, teléfono y redes.
-            Cada lista se agrupa por ciudad o pueblo.
+            Usá el molde para que las columnas coincidan siempre. Si el archivo
+            trae la columna ciudad, se arma una lista por cada pueblo.
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              nativeButton={false}
+              render={<a href={MOLDE_PATH} download="molde-negocios.csv" />}
+            >
+              <Download />
+              Descargar molde
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              nativeButton={false}
+              render={<a href={DATOS_PRUEBA_PATH} download="datos-prueba-mar-del-plata.csv" />}
+            >
+              <Download />
+              CSV de prueba
+            </Button>
+          </div>
+
           {!appendToListId && (
             <div className="grid gap-2">
-              <Label htmlFor="city-title">Ciudad o pueblo</Label>
+              <Label htmlFor="city-title">Ciudad o pueblo (si no viene en el CSV)</Label>
               <div className="relative">
                 <MapPin className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -150,31 +157,9 @@ export function UploadDialog({
                   className="pl-8"
                   placeholder="Mar del Plata, Tandil, Balcarce…"
                   value={title}
-                  onChange={(event) => {
-                    setTitle(event.target.value)
-                    setTargetListId("new")
-                  }}
+                  onChange={(event) => setTitle(event.target.value)}
                 />
               </div>
-            </div>
-          )}
-
-          {!appendToListId && lists.length > 0 && (
-            <div className="grid gap-2">
-              <Label htmlFor="target-list">Destino</Label>
-              <select
-                id="target-list"
-                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                value={targetListId}
-                onChange={(event) => setTargetListId(event.target.value)}
-              >
-                <option value="new">Crear lista nueva</option>
-                {lists.map((list) => (
-                  <option key={list.id} value={list.id}>
-                    Agregar a {list.title} ({list.businesses.length})
-                  </option>
-                ))}
-              </select>
             </div>
           )}
 
@@ -206,19 +191,12 @@ export function UploadDialog({
               )}
             </span>
             <span className="text-sm font-medium">
-              {fileName || "Arrastrá un CSV o Excel, o hacé clic para elegir"}
+              {fileName || "Arrastrá el CSV del molde, o hacé clic para elegir"}
             </span>
             <span className="text-xs text-muted-foreground">
-              Columnas esperadas: nombre, rubro, ubicacion, numero de teléfono,
+              Columnas: ciudad; nombre; rubro; ubicacion; numero de telefono;
               redes sociales
             </span>
-            <a
-              href="/plantilla-negocios.csv"
-              onClick={(event) => event.stopPropagation()}
-              className="text-xs font-medium text-teal-800 underline underline-offset-2"
-            >
-              Descargar plantilla CSV
-            </a>
           </button>
           <input
             ref={fileRef}
@@ -234,6 +212,12 @@ export function UploadDialog({
             </p>
           ))}
 
+          {citiesInFile.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              Ciudades en el archivo: {citiesInFile.join(" · ")}
+            </p>
+          )}
+
           {detected.length > 0 && (
             <p className="text-xs text-muted-foreground">
               Columnas detectadas: {detected.join(" · ")}
@@ -242,35 +226,26 @@ export function UploadDialog({
 
           {rows.length > 0 && (
             <div className="overflow-hidden rounded-lg border">
-              <div className="flex items-center justify-between bg-muted/60 px-3 py-2 text-xs">
-                <span>
-                  Vista previa · {rows.length} filas
-                  {duplicateInfo
-                    ? ` · ${duplicateInfo.added} nuevas, ${duplicateInfo.duplicates} duplicadas`
-                    : ""}
-                </span>
+              <div className="bg-muted/60 px-3 py-2 text-xs">
+                Vista previa · {rows.length} filas
               </div>
               <div className="max-h-48 overflow-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="sticky top-0 bg-white">
                     <tr className="border-b text-muted-foreground">
+                      <th className="px-3 py-1.5 font-medium">Ciudad</th>
                       <th className="px-3 py-1.5 font-medium">Nombre</th>
                       <th className="px-3 py-1.5 font-medium">Rubro</th>
                       <th className="px-3 py-1.5 font-medium">Teléfono</th>
-                      <th className="hidden px-3 py-1.5 font-medium sm:table-cell">
-                        Ubicación
-                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {rows.slice(0, 8).map((row, index) => (
                       <tr key={`${row.name}-${index}`} className="border-b last:border-0">
+                        <td className="px-3 py-1.5">{row.city || title || "—"}</td>
                         <td className="px-3 py-1.5 font-medium">{row.name}</td>
                         <td className="px-3 py-1.5">{row.category || "—"}</td>
                         <td className="px-3 py-1.5">{row.phone || "—"}</td>
-                        <td className="hidden px-3 py-1.5 sm:table-cell">
-                          {row.address || "—"}
-                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -285,7 +260,7 @@ export function UploadDialog({
             Cancelar
           </Button>
           <Button onClick={handleImport} disabled={!rows.length || parsing}>
-            {targetListId === "new" ? "Crear lista" : "Agregar a la lista"}
+            Importar a la base
           </Button>
         </DialogFooter>
       </DialogContent>

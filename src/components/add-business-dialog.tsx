@@ -44,6 +44,7 @@ export function AddBusinessDialog({
       return
     }
     addBusiness(listId, {
+      city: "",
       name: name.trim(),
       category: category.trim(),
       address: address.trim(),
